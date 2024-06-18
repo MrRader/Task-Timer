@@ -36,7 +36,7 @@ from PyQt6.QtWidgets import (
     QDateEdit,
     QScrollArea
 )
-from PyQt6.QtCore import QDate, Qt, pyqtSlot
+from PyQt6.QtCore import QDate, Qt, pyqtSlot, QTimer
 
 # Define a global variable for button and field width
 GLOBAL_WIDTH = 215
@@ -107,6 +107,11 @@ class TaskTracker(QMainWindow):
         self.create_task_buttons()
         self.create_tsv_if_not_exists()
 
+        # Initialize timer and start time variables
+        self.task_start_time = None
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_status_label)
+
     def create_task_buttons(self):
         for task in self.tasks:
             button = QPushButton(task)
@@ -138,11 +143,16 @@ class TaskTracker(QMainWindow):
 
         # Write the start event for the clicked task
         self.write_task_data(clicked_task, "Started Task", current_time)
-        self.status_label.setText(f"Starting task: {clicked_task}")
-        print(f"Starting task: {clicked_task}")
+        self.status_label.setText(f"Current task: {clicked_task}")
+        print(f"Current task: {clicked_task}")
 
         self.current_task = clicked_task
         self.stop_task_button.setEnabled(True)  # Enable the Stop Task button when a task is started
+
+        # Set the start time and start the timer
+        self.task_start_time = datetime.now()
+        self.update_status_label()  # Update immediately to show 0h 0m
+        self.timer.start(60000)  # Update every minute
 
     def stop_task(self):
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -152,6 +162,16 @@ class TaskTracker(QMainWindow):
             print(f"Stopping task: {self.current_task}")
             self.current_task = None
             self.stop_task_button.setEnabled(False)  # Disable the Stop Task button when no task is active
+
+            # Stop the timer
+            self.timer.stop()
+
+    def update_status_label(self):
+        if self.current_task and self.task_start_time:
+            elapsed_time = datetime.now() - self.task_start_time
+            hours, remainder = divmod(elapsed_time.total_seconds(), 3600)
+            minutes, _ = divmod(remainder, 60)
+            self.status_label.setText(f"Current task: {self.current_task} ({int(hours)}h {int(minutes)}m)")
 
     def create_tsv_if_not_exists(self):
         log_folder = "Log Files"
