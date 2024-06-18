@@ -70,6 +70,10 @@ class TaskTracker(QMainWindow):
         self.report_date_picker.setFixedWidth(GLOBAL_WIDTH)
         self.report_date_picker.setCalendarPopup(True)
 
+        self.open_folder_button = QPushButton("Open Reports Folder")
+        self.open_folder_button.setFixedWidth(GLOBAL_WIDTH)
+        self.open_folder_button.clicked.connect(self.open_reports_folder)
+
         self.status_label = QLabel("")  # Label to show status messages
 
         self.task_buttons_layout = QVBoxLayout()
@@ -92,6 +96,7 @@ class TaskTracker(QMainWindow):
         layout.addWidget(QLabel("Report Date:"))
         layout.addWidget(self.report_date_picker)  # Add the date picker to the layout
         layout.addWidget(self.create_report_button)  # Add the create report button to the layout
+        layout.addWidget(self.open_folder_button)  # Add the open folder button to the layout
         layout.addWidget(self.status_label)  # Add the status label to the layout
         layout.addWidget(self.scroll_area)  # Add the scroll area to the layout
 
@@ -149,9 +154,13 @@ class TaskTracker(QMainWindow):
             self.stop_task_button.setEnabled(False)  # Disable the Stop Task button when no task is active
 
     def create_tsv_if_not_exists(self):
+        log_folder = "Log Files"
+        if not os.path.exists(log_folder):
+            os.makedirs(log_folder)
+
         self.current_date = datetime.now().strftime("%Y-%m-%d")
-        self.filename = f"{self.current_date}.tsv"
-        
+        self.filename = os.path.join(log_folder, f"{self.current_date}.tsv")
+
         if not os.path.isfile(self.filename):
             try:
                 with open(self.filename, 'w', newline='') as tsvfile:
@@ -165,14 +174,18 @@ class TaskTracker(QMainWindow):
             print(f"TSV file already exists: {self.filename}")
 
     def create_report(self):
+        report_folder = "Reports"
+        if not os.path.exists(report_folder):
+            os.makedirs(report_folder)
+        
         report_date = self.report_date_picker.date().toString("yyyy-MM-dd")
-        tsv_filename = f"{report_date}.tsv"
-        base_report_filename = f"{report_date}_Report.csv"
+        tsv_filename = os.path.join("Log Files", f"{report_date}.tsv")
+        base_report_filename = os.path.join(report_folder, f"{report_date}_Report.csv")
         report_filename = base_report_filename
         counter = 1
 
         while os.path.isfile(report_filename):
-            report_filename = f"{report_date}_Report_{counter}.csv"
+            report_filename = os.path.join(report_folder, f"{report_date}_Report_{counter}.csv")
             counter += 1
 
         tasks = {}
@@ -247,10 +260,17 @@ class TaskTracker(QMainWindow):
             with open(self.filename, 'a', newline='') as tsvfile:
                 tsvwriter = csv.writer(tsvfile, delimiter='\t')
                 tsvwriter.writerow([timestamp, task, status])
-            print(f"Written to TSV: {timestamp}, {task}, {status}")
+            print(f"Written to TSV: {timestamp, task, status}")
         except Exception as e:
             print(f"Error writing to TSV: {e}")
             self.status_label.setText(f"Error writing to TSV: {e}")
+
+    def open_reports_folder(self):
+        reports_folder = "Reports"
+        if os.path.exists(reports_folder):
+            os.startfile(reports_folder)
+        else:
+            print(f"Reports folder '{reports_folder}' does not exist.")
 
     @pyqtSlot()
     def closeEvent(self, event):
